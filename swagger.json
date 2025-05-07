@@ -1,0 +1,4380 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Movie Recommendation APIs",
+    "description": "API documentation for your movie recommendation.",
+    "version": "1.0.0"
+  },
+  "host": "localhost:3000",
+  "basePath": "/api",
+  "schemes": ["http"],
+  "securityDefinitions": {
+    "Bearer": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "Enter your bearer token in the format **Bearer &lt;token&gt;**"
+    }
+  },
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "User login",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "user",
+            "description": "User credentials",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "email": {
+                  "type": "string",
+                  "example": "user@example.com"
+                },
+                "password": {
+                  "type": "string",
+                  "example": "password123"
+                }
+              },
+              "required": ["email", "password"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "token": { "type": "string" }
+              }
+            }
+          },
+          "404": { "description": "User not found or Invalid password" },
+          "500": { "description": "Internal server error" }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Register new user",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "user",
+            "description": "User registration details",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "example": "John Doe"
+                },
+                "email": {
+                  "type": "string",
+                  "example": "john@example.com"
+                },
+                "password": {
+                  "type": "string",
+                  "example": "password123"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": ["user", "admin"],
+                  "example": "user"
+                }
+              },
+              "required": ["name", "email", "password"]
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "User Registered Successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": { "type": "string" }
+              }
+            }
+          },
+          "400": { "description": "Request body is missing" },
+          "500": { "description": "Internal server error" }
+        }
+      }
+    },
+    "/user/profile": {
+      "get": {
+        "tags": ["Profile"],
+        "summary": "Get user profile",
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": {
+            "description": "Profile retrieved successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "favoriteGenres": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "favoriteActors": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "bio": { "type": "string" },
+                "avatar": {
+                  "type": "object",
+                  "properties": {
+                    "filename": { "type": "string" },
+                    "path": { "type": "string" },
+                    "contentType": { "type": "string" },
+                    "size": { "type": "number" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Profile not found" },
+          "500": { "description": "Server error" }
+        }
+      },
+      "post": {
+        "tags": ["Profile"],
+        "summary": "Create or update user profile",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "profile",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "favoriteGenres": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "favoriteActors": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "bio": { "type": "string" }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Profile updated successfully" },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Server error" }
+        }
+      },
+      "delete": {
+        "tags": ["Profile"],
+        "summary": "Delete user profile",
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": { "description": "Profile deleted successfully" },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/user/profile/avatar": {
+      "put": {
+        "tags": ["Profile"],
+        "summary": "Update profile avatar",
+        "security": [{ "Bearer": [] }],
+        "consumes": ["multipart/form-data"],
+        "parameters": [
+          {
+            "in": "formData",
+            "name": "avatar",
+            "type": "file",
+            "required": true,
+            "description": "Profile avatar image (max 5MB, formats: jpg, png, gif)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Avatar updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Avatar updated successfully"
+                    },
+                    "profile": {
+                      "$ref": "#/definitions/schemas/Profile"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid file format or size" },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/movies": {
+      "post": {
+        "tags": ["Movies"],
+        "summary": "Add a new movie",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "movie",
+            "description": "Movie object that needs to be added",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["title", "genre", "releaseDate", "runtime", "synopsis", "ageRating"],
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "example": "Inception"
+                },
+                "genre": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "example": ["Action", "Sci-Fi", "Thriller"]
+                },
+                "director": {
+                  "type": "string",
+                  "description": "Director's ID",
+                  "example": "507f1f77bcf86cd799439011"
+                },
+                "cast": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Array of cast member IDs",
+                  "example": [
+                    "507f1f77bcf86cd799439012",
+                    "507f1f77bcf86cd799439013"
+                  ]
+                },
+                "releaseDate": {
+                  "type": "string",
+                  "format": "date",
+                  "example": "2010-07-16"
+                },
+                "runtime": {
+                  "type": "number",
+                  "description": "Runtime in minutes",
+                  "example": 148
+                },
+                "synopsis": {
+                  "type": "string",
+                  "example": "A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O."
+                },
+                "coverPhotos": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "example": [
+                    "https://example.com/inception-cover1.jpg",
+                    "https://example.com/inception-cover2.jpg"
+                  ]
+                },
+                "trivia": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "example": [
+                    "The movie took 10 years to write",
+                    "The rotating hallway scene was done with practical effects"
+                  ]
+                },
+                "goofs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "example": [
+                    "In the opening scene, the water glass changes position"
+                  ]
+                },
+                "soundtrack": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "example": [
+                    "Time - Hans Zimmer",
+                    "Dream Is Collapsing - Hans Zimmer"
+                  ]
+                },
+                "ageRating": {
+                  "type": "string",
+                  "example": "PG-13"
+                },
+                "parentalGuidance": {
+                  "type": "string",
+                  "example": "Some violence and intense action sequences"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Movie created successfully",
+            "schema": {
+              "$ref": "#/components/schemas/Movie"
+            }
+          },
+          "400": {
+            "description": "Invalid input / Missing required fields"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "403": {
+            "description": "Forbidden - Not an admin"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "get": {
+        "tags": ["Movies"],
+        "summary": "Get all movies",
+        "responses": {
+          "200": {
+            "description": "List of all movies"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/movies/{id}": {
+      "put": {
+        "tags": ["Movies"],
+        "summary": "Update a movie",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MovieInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Movie updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Movie"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Movies"],
+        "summary": "Delete movie (Admin only)",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Movie deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Movie not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "get": {
+        "tags": ["Movies"],
+        "summary": "Get movie by ID",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Movie details"
+          },
+          "404": {
+            "description": "Movie not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/ratings": {
+      "post": {
+        "tags": ["Ratings & Reviews"],
+        "summary": "Add or update movie rating",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "rating",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "movieId": {
+                  "type": "string",
+                  "example": "507f1f77bcf86cd799439014"
+                },
+                "rating": {
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 5,
+                  "example": 4
+                }
+              },
+              "required": ["movieId", "rating"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rating added successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "example": "Rating added successfully"
+                },
+                "rating": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "string",
+                      "example": "507f1f77bcf86cd799439030"
+                    },
+                    "movie": {
+                      "type": "string",
+                      "example": "507f1f77bcf86cd799439014"
+                    },
+                    "rating": {
+                      "type": "number",
+                      "example": 4
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2024-01-15T10:30:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Movie not found"
+          }
+        }
+      }
+    },
+    "/movies/{movieId}/rating": {
+      "get": {
+        "tags": ["Ratings & Reviews"],
+        "summary": "Get movie rating statistics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "movieId",
+            "required": true,
+            "type": "string",
+            "description": "ID of the movie",
+            "example": "507f1f77bcf86cd799439014"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Movie rating statistics",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "movieId": {
+                  "type": "string",
+                  "example": "507f1f77bcf86cd799439014"
+                },
+                "averageRating": {
+                  "type": "number",
+                  "example": 4.2
+                },
+                "totalRatings": {
+                  "type": "number",
+                  "example": 156
+                },
+                "distribution": {
+                  "type": "object",
+                  "properties": {
+                    "5": {
+                      "type": "number",
+                      "example": 80
+                    },
+                    "4": {
+                      "type": "number",
+                      "example": 45
+                    },
+                    "3": {
+                      "type": "number",
+                      "example": 20
+                    },
+                    "2": {
+                      "type": "number",
+                      "example": 8
+                    },
+                    "1": {
+                      "type": "number",
+                      "example": 3
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Movie not found"
+          }
+        }
+      }
+    },
+    "/reviews": {
+      "post": {
+        "tags": ["Ratings & Reviews"],
+        "summary": "Add movie review",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "review",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "movieId": {
+                  "type": "string",
+                  "example": "507f1f77bcf86cd799439014"
+                },
+                "reviewText": {
+                  "type": "string",
+                  "example": "Amazing movie with mind-bending plot..."
+                }
+              },
+              "required": ["movieId", "reviewText"]
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Review added successfully",
+            "schema": {
+              "$ref": "#/definitions/Review"
+            }
+          },
+          "400": {
+            "description": "User has already reviewed this movie"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Movie not found"
+          }
+        }
+      }
+    },
+    "/movies/{movieId}/details": {
+      "get": {
+        "tags": ["Ratings & Reviews"],
+        "summary": "Get comprehensive movie details including ratings and reviews",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "movieId",
+            "required": true,
+            "type": "string",
+            "description": "ID of the movie",
+            "example": "507f1f77bcf86cd799439014"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Movie details with ratings and reviews",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "movie": {
+                  "type": "object",
+                  "properties": {
+                    "_id": {
+                      "type": "string",
+                      "example": "507f1f77bcf86cd799439014"
+                    },
+                    "title": {
+                      "type": "string",
+                      "example": "Inception"
+                    },
+                    "director": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "507f1f77bcf86cd799439011"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "Christopher Nolan"
+                        },
+                        "role": {
+                          "type": "string",
+                          "example": "Director"
+                        }
+                      }
+                    },
+                    "cast": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "_id": {
+                            "type": "string",
+                            "example": "507f1f77bcf86cd799439012"
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "Leonardo DiCaprio"
+                          },
+                          "role": {
+                            "type": "string",
+                            "example": "Actor"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "ratings": {
+                  "type": "object",
+                  "properties": {
+                    "average": {
+                      "type": "number",
+                      "example": 4.2
+                    },
+                    "total": {
+                      "type": "number",
+                      "example": 156
+                    },
+                    "distribution": {
+                      "type": "object",
+                      "properties": {
+                        "5": {
+                          "type": "number",
+                          "example": 80
+                        },
+                        "4": {
+                          "type": "number",
+                          "example": 45
+                        },
+                        "3": {
+                          "type": "number",
+                          "example": 20
+                        },
+                        "2": {
+                          "type": "number",
+                          "example": 8
+                        },
+                        "1": {
+                          "type": "number",
+                          "example": 3
+                        }
+                      }
+                    }
+                  }
+                },
+                "reviews": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "_id": {
+                        "type": "string",
+                        "example": "507f1f77bcf86cd799439020"
+                      },
+                      "user": {
+                        "type": "object",
+                        "properties": {
+                          "_id": {
+                            "type": "string",
+                            "example": "507f1f77bcf86cd799439030"
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "John Doe"
+                          }
+                        }
+                      },
+                      "reviewText": {
+                        "type": "string",
+                        "example": "Amazing movie with mind-bending plot..."
+                      },
+                      "likes": {
+                        "type": "number",
+                        "example": 45
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2024-01-15T10:30:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Movie not found"
+          }
+        }
+      }
+    },
+    "/recommendations/movies/{movieId}/similar": {
+      "get": {
+        "tags": ["Recommendations"],
+        "summary": "Get similar movies",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "movieId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of similar movies"
+          }
+        }
+      }
+    },
+    "/recommendations/recommendations": {
+      "get": {
+        "tags": ["Recommendations"],
+        "summary": "Get personalized recommendations",
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": {
+            "description": "List of recommended movies"
+          }
+        }
+      }
+    },
+    "/recommendations/movies/trending": {
+      "get": {
+        "tags": ["Recommendations"],
+        "summary": "Get trending movies",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "type": "integer",
+              "default": 7
+            },
+            "description": "Number of days to consider for trending"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of trending movies"
+          }
+        }
+      }
+    },
+    "/recommendations/movies/top-rated": {
+      "get": {
+        "tags": ["Recommendations"],
+        "summary": "Get top rated movies",
+        "responses": {
+          "200": {
+            "description": "List of top rated movies"
+          }
+        }
+      }
+    },
+    "/lists": {
+      "post": {
+        "tags": ["Lists"],
+        "summary": "Create a new list",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "listDetails",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["listName"],
+              "properties": {
+                "listName": {
+                  "type": "string",
+                  "default": "WatchList",
+                  "example": "My Favorite Movies"
+                },
+                "description": {
+                  "type": "string",
+                  "example": "Collection of my all-time favorites"
+                },
+                "isPublic": {
+                  "type": "boolean",
+                  "default": false
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "List created successfully",
+            "schema": {
+              "$ref": "#/components/schemas/UserList"
+            }
+          },
+          "400": {
+            "description": "List name already exists"
+          }
+        }
+      },
+      "get": {
+        "tags": ["Lists"],
+        "summary": "Get user's lists",
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": {
+            "description": "Lists retrieved successfully",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/UserList"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lists/movies": {
+      "post": {
+        "tags": ["Lists"],
+        "summary": "Add movie to a list",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "movieDetails",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["movieName"],
+              "properties": {
+                "movieName": {
+                  "type": "string",
+                  "example": "The Dark Knight"
+                },
+                "listName": {
+                  "type": "string",
+                  "default": "WatchList",
+                  "example": "WatchList"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Movie added successfully",
+            "schema": {
+              "$ref": "#/components/schemas/UserList"
+            }
+          },
+          "400": {
+            "description": "Movie already in list"
+          },
+          "404": {
+            "description": "Movie or list not found"
+          }
+        }
+      }
+    },
+    "/lists/{listName}": {
+      "get": {
+        "tags": ["Lists"],
+        "summary": "Get list details",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listName",
+            "required": true,
+            "type": "string",
+            "description": "Name of the list"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List details retrieved successfully",
+            "schema": {
+              "$ref": "#/components/schemas/UserList"
+            }
+          },
+          "404": {
+            "description": "List not found"
+          }
+        }
+      },
+      "put": {
+        "tags": ["Lists"],
+        "summary": "Update list details",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listName",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "updateDetails",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "newListName": {
+                  "type": "string",
+                  "example": "Updated List Name"
+                },
+                "description": {
+                  "type": "string",
+                  "example": "Updated description"
+                },
+                "isPublic": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List updated successfully",
+            "schema": {
+              "$ref": "#/components/schemas/UserList"
+            }
+          },
+          "404": {
+            "description": "List not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Lists"],
+        "summary": "Delete a list",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listName",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List deleted successfully"
+          },
+          "400": {
+            "description": "Cannot delete WatchList"
+          },
+          "404": {
+            "description": "List not found"
+          }
+        }
+      }
+    },
+    "/lists/{listName}/movies/{movieName}": {
+      "delete": {
+        "tags": ["Lists"],
+        "summary": "Remove movie from list",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listName",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "name": "movieName",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Movie removed successfully"
+          },
+          "404": {
+            "description": "List or movie not found"
+          }
+        }
+      }
+    },
+    "/lists/public": {
+      "get": {
+        "tags": ["Lists"],
+        "summary": "Get public lists",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "type": "integer",
+            "default": 1
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "type": "integer",
+            "default": 10
+          },
+          {
+            "in": "query",
+            "name": "sortBy",
+            "type": "string",
+            "enum": ["updatedAt", "createdAt", "listName"],
+            "default": "updatedAt"
+          },
+          {
+            "in": "query",
+            "name": "sortOrder",
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "default": "desc"
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "type": "string",
+            "description": "Search in list name and description"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public lists retrieved successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "lists": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserList"
+                  }
+                },
+                "currentPage": {
+                  "type": "integer"
+                },
+                "totalPages": {
+                  "type": "integer"
+                },
+                "totalLists": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Search and filter movies",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "searchTerm",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Search term for title or synopsis"
+          },
+          {
+            "in": "query",
+            "name": "genre",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "Filter by genre(s)",
+            "example": ["Action", "Drama"]
+          },
+          {
+            "in": "query",
+            "name": "yearFrom",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by release year (from)",
+            "example": 2020
+          },
+          {
+            "in": "query",
+            "name": "yearTo",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by release year (to)",
+            "example": 2023
+          },
+          {
+            "in": "query",
+            "name": "ratingFrom",
+            "schema": {
+              "type": "number"
+            },
+            "description": "Filter by minimum rating",
+            "example": 4
+          },
+          {
+            "in": "query",
+            "name": "sortBy",
+            "schema": {
+              "type": "string",
+              "enum": ["releaseDate", "averageRating", "title"]
+            },
+            "description": "Sort field"
+          },
+          {
+            "in": "query",
+            "name": "sortOrder",
+            "schema": {
+              "type": "string",
+              "enum": ["asc", "desc"]
+            },
+            "description": "Sort order"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Results per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "movies": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Movie"
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "totalPages": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/top-movies": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Get top rated movies",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period",
+            "schema": {
+              "type": "string",
+              "enum": ["week", "month", "year"],
+              "default": "month"
+            },
+            "description": "Time period for top movies"
+          },
+          {
+            "in": "query",
+            "name": "genre",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by genre"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Number of results"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of top movies"
+          }
+        }
+      }
+    },
+    "/community/threads": {
+      "post": {
+        "tags": ["Community"],
+        "summary": "Create a new thread",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "thread",
+            "description": "Thread details",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["title", "content"],
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "example": "What's your favorite Christopher Nolan movie?"
+                },
+                "content": {
+                  "type": "string",
+                  "example": "Let's discuss which Nolan film stands out as his masterpiece."
+                },
+                "category": {
+                  "type": "string",
+                  "enum": ["discussion", "review", "recommendation", "news"],
+                  "example": "discussion"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "example": ["nolan", "inception", "movies"]
+                },
+                "relatedTo": {
+                  "type": "string",
+                  "description": "Related movie ID",
+                  "example": "507f1f77bcf86cd799439011"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Thread created successfully",
+            "schema": {
+              "$ref": "#/components/schemas/Thread"
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "get": {
+        "tags": ["Community"],
+        "summary": "Get threads with filters",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string",
+              "enum": ["discussion", "review", "recommendation", "news"]
+            }
+          },
+          {
+            "in": "query",
+            "name": "sortBy",
+            "schema": {
+              "type": "string",
+              "enum": ["recent", "popular", "trending"],
+              "default": "recent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of threads",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "threads": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Thread"
+                  }
+                },
+                "total": { "type": "integer" },
+                "page": { "type": "integer" },
+                "totalPages": { "type": "integer" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/community/threads/{threadId}/comments": {
+      "post": {
+        "tags": ["Community"],
+        "summary": "Add a comment to a thread",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "threadId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "comment",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["content"],
+              "properties": {
+                "content": {
+                  "type": "string",
+                  "example": "I think Inception is his best work!"
+                },
+                "parentComment": {
+                  "type": "string",
+                  "description": "ID of parent comment for replies",
+                  "example": "507f1f77bcf86cd799439012"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Comment added successfully",
+            "schema": {
+              "$ref": "#/components/schemas/Comment"
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Thread not found" }
+        }
+      }
+    },
+    "/community/threads/{threadId}/like": {
+      "post": {
+        "tags": ["Community"],
+        "summary": "Toggle like on a thread",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "threadId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Like toggled successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "likes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Thread not found" }
+        }
+      }
+    },
+    "/community/moderate/{contentType}/{contentId}": {
+      "post": {
+        "tags": ["Community"],
+        "summary": "Moderate content (admin only)",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contentType",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["thread", "comment"]
+            }
+          },
+          {
+            "in": "path",
+            "name": "contentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["action"],
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": ["DELETE", "LOCK"],
+                    "example": "LOCK"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Moderation action successful" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden - Admin only" },
+          "404": { "description": "Content not found" }
+        }
+      }
+    },
+    "/admin/movies": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Add a new movie",
+        "security": [{ "Bearer": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MovieInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Movie added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Movie"
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden - Admin only" },
+          "400": { "description": "Invalid input" }
+        }
+      },
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get all movies with filters",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "genre",
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "year",
+            "schema": { "type": "integer" }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            },
+            "description": "Number of items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of movies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Movie"
+                      }
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "description": "Total number of items"
+                        },
+                        "page": {
+                          "type": "integer",
+                          "description": "Current page number"
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "description": "Items per page"
+                        },
+                        "totalPages": {
+                          "type": "integer",
+                          "description": "Total number of pages"
+                        },
+                        "hasNextPage": {
+                          "type": "boolean",
+                          "description": "Whether there is a next page"
+                        },
+                        "hasPrevPage": {
+                          "type": "boolean",
+                          "description": "Whether there is a previous page"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/movies/{movieId}": {
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Update movie details",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "movieId",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MovieInput"
+              }
+            }
+          }
+        },
+        "delete": {
+          "tags": ["Admin"],
+          "summary": "Delete a movie",
+          "security": [{ "Bearer": [] }],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "movieId",
+              "required": true,
+              "schema": { "type": "string" }
+            }
+          ],
+          "responses": {
+            "200": { "description": "Movie deleted successfully" },
+            "401": { "description": "Unauthorized" },
+            "403": { "description": "Forbidden - Admin only" },
+            "404": { "description": "Movie not found" }
+          }
+        }
+      }
+    },
+    "/admin/reviews/moderate": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Moderate a review",
+        "description": "Allow admins to moderate (approve/reject/delete) reviews",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "moderationData",
+            "description": "Review moderation details",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "reviewId": {
+                  "type": "string",
+                  "example": "507f1f77bcf86cd799439011"
+                },
+                "action": {
+                  "type": "string",
+                  "enum": ["APPROVE", "REJECT", "DELETE"],
+                  "example": "REJECT"
+                },
+                "reason": {
+                  "type": "string",
+                  "example": "Contains inappropriate content"
+                }
+              },
+              "required": ["reviewId", "action"]
+            }
+          }
+        ],
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": {
+            "description": "Review moderated successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "example": "Review moderated successfully"
+                },
+                "review": {
+                  "type": "object",
+                  "properties": {
+                    "_id": {
+                      "type": "string",
+                      "example": "507f1f77bcf86cd799439011"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "rejected"
+                    },
+                    "rejectionReason": {
+                      "type": "string",
+                      "example": "Contains inappropriate content"
+                    },
+                    "moderatedBy": {
+                      "type": "string",
+                      "example": "507f1f77bcf86cd799439030"
+                    },
+                    "moderatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or action"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "403": {
+            "description": "Forbidden - User is not an admin"
+          },
+          "404": {
+            "description": "Review not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/admin/dashboard/stats": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get dashboard statistics",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period",
+            "schema": {
+              "type": "string",
+              "enum": ["day", "week", "month", "year"],
+              "default": "week"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardStats"
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden - Admin only" }
+        }
+      }
+    },
+    "/admin/trending": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get trending data",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": ["movies", "genres", "actors"],
+              "default": "movies"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "schema": {
+              "type": "string",
+              "enum": ["day", "week", "month"],
+              "default": "week"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trending data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendingData"
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden - Admin only" }
+        }
+      }
+    },
+    "/admin/logs": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get admin activity logs",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "action",
+            "schema": {
+              "type": "string",
+              "enum": ["CREATE", "UPDATE", "DELETE", "MODERATE"]
+            }
+          },
+          {
+            "in": "query",
+            "name": "startDate",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            },
+            "description": "Number of items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Admin logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "logs": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AdminLog"
+                      }
+                    },
+                    "total": { "type": "integer" },
+                    "page": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden - Admin only" }
+        }
+      }
+    },
+    "/profile/field": {
+      "patch": {
+        "tags": ["Profile"],
+        "summary": "Update specific profile field",
+        "security": [{ "Bearer": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["field", "data"],
+                "properties": {
+                  "field": {
+                    "type": "string",
+                    "enum": ["favoriteGenres", "favoriteActors", "bio"]
+                  },
+                  "data": {
+                    "oneOf": [
+                      {
+                        "type": "array",
+                        "items": { "type": "string" }
+                      },
+                      { "type": "string" }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Field updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/user/profile/genres": {
+      "put": {
+        "tags": ["Profile"],
+        "summary": "Update favorite genres",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["genres"],
+              "properties": {
+                "genres": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 20
+                }
+              }
+            },
+            "example": {
+              "genres": ["Action", "Comedy", "Drama", "Sci-Fi"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Favorite genres updated successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "example": "Favorite genres updated successfully"
+                },
+                "profile": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/user/profile/actors": {
+      "put": {
+        "tags": ["Profile"],
+        "summary": "Update favorite actors",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["actors"],
+              "properties": {
+                "actors": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 20
+                }
+              }
+            },
+            "example": {
+              "actors": ["Tom Hanks", "Morgan Freeman", "Leonardo DiCaprio"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Favorite actors updated successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "example": "Favorite actors updated successfully"
+                },
+                "profile": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/user/profile/bio": {
+      "put": {
+        "tags": ["Profile"],
+        "summary": "Update profile bio",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["bio"],
+              "properties": {
+                "bio": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              }
+            },
+            "example": {
+              "bio": "Movie enthusiast with a passion for classic films and contemporary cinema. Love analyzing film techniques and storytelling methods."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bio updated successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "example": "Bio updated successfully"
+                },
+                "profile": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/crew": {
+      "post": {
+        "tags": ["Crew"],
+        "summary": "Create new crew member (Admin only)",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "crew",
+            "description": "Crew member details",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "example": "Christopher Nolan"
+                },
+                "role": {
+                  "type": "string",
+                  "example": "Director"
+                },
+                "biography": {
+                  "type": "string",
+                  "example": "British-American film director known for mind-bending narratives"
+                },
+                "awards": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "example": [
+                    "Academy Award for Best Director",
+                    "Golden Globe Award",
+                    "BAFTA Award"
+                  ]
+                },
+                "photos": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "example": [
+                    "https://example.com/nolan1.jpg",
+                    "https://example.com/nolan2.jpg"
+                  ]
+                },
+                "filmography": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "example": [
+                    "Inception",
+                    "The Dark Knight",
+                    "Interstellar",
+                    "Dunkirk"
+                  ]
+                }
+              },
+              "required": ["name", "role"]
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Crew member created successfully"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/crew/{id}": {
+      "put": {
+        "tags": ["Crew"],
+        "summary": "Update crew member (Admin only)",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "string",
+            "description": "ID of crew member to update",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          {
+            "in": "body",
+            "name": "crew",
+            "description": "Updated crew member details",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "example": "Leonardo DiCaprio"
+                },
+                "role": {
+                  "type": "string",
+                  "example": "Actor"
+                },
+                "biography": {
+                  "type": "string",
+                  "example": "Award-winning actor known for diverse and challenging roles"
+                },
+                "awards": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "example": [
+                    "Academy Award for Best Actor",
+                    "Golden Globe Award",
+                    "Screen Actors Guild Award"
+                  ]
+                },
+                "photos": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "example": [
+                    "https://example.com/leo1.jpg",
+                    "https://example.com/leo2.jpg"
+                  ]
+                },
+                "filmography": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "example": [
+                    "Inception",
+                    "The Revenant",
+                    "Titanic",
+                    "The Wolf of Wall Street"
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Crew member updated successfully"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Crew member not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Crew"],
+        "summary": "Delete crew member (Admin only)",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "ID of crew member to delete",
+            "required": true,
+            "type": "string",
+            "example": "507f1f77bcf86cd799439011"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Crew member deleted successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "example": "Crew member deleted successfully"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Admin only"
+          },
+          "404": {
+            "description": "Crew member not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/users/{userId}/ratings": {
+      "get": {
+        "tags": ["User Reviews"],
+        "summary": "Get user's ratings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "type": "string",
+            "description": "ID of the user"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of user's ratings",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "movie": {
+                    "type": "object",
+                    "properties": {
+                      "_id": {
+                        "type": "string",
+                        "example": "507f1f77bcf86cd799439014"
+                      },
+                      "title": {
+                        "type": "string",
+                        "example": "Inception"
+                      },
+                      "genre": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "example": ["Action", "Sci-Fi"]
+                      }
+                    }
+                  },
+                  "rating": {
+                    "type": "number",
+                    "example": 4
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reviews/highlights": {
+      "get": {
+        "tags": ["Review Highlights"],
+        "summary": "Get review highlights",
+        "responses": {
+          "200": {
+            "description": "Review highlights",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "topRated": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Review"
+                  }
+                },
+                "mostRecent": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Review"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reviews/most-discussed": {
+      "get": {
+        "tags": ["Review Highlights"],
+        "summary": "Get most discussed reviews",
+        "responses": {
+          "200": {
+            "description": "Most discussed reviews",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Review"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reviews/top-rated": {
+      "get": {
+        "tags": ["Review Highlights"],
+        "summary": "Get top rated reviews",
+        "responses": {
+          "200": {
+            "description": "Top rated reviews",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Review"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{userId}/reviews": {
+      "post": {
+        "tags": ["User Reviews"],
+        "summary": "Create a review for a specific user",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "type": "string",
+            "description": "ID of the user"
+          },
+          {
+            "in": "body",
+            "name": "review",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "movieId": {
+                  "type": "string",
+                  "example": "507f1f77bcf86cd799439014"
+                },
+                "reviewText": {
+                  "type": "string",
+                  "example": "This movie was fantastic! The plot and acting were superb."
+                }
+              },
+              "required": ["movieId", "reviewText"]
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Review created successfully",
+            "schema": {
+              "$ref": "#/definitions/Review"
+            }
+          },
+          "400": {
+            "description": "User has already reviewed this movie"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Movie not found"
+          }
+        }
+      }
+    },
+    "/users/{userId}/reviews/{reviewId}": {
+      "put": {
+        "tags": ["User Reviews"],
+        "summary": "Update a specific review",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "type": "string",
+            "description": "ID of the user"
+          },
+          {
+            "in": "path",
+            "name": "reviewId",
+            "required": true,
+            "type": "string",
+            "description": "ID of the review"
+          },
+          {
+            "in": "body",
+            "name": "review",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "reviewText": {
+                  "type": "string",
+                  "example": "Updated review text after watching it again."
+                }
+              },
+              "required": ["reviewText"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review updated successfully",
+            "schema": {
+              "$ref": "#/definitions/Review"
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Review not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["User Reviews"],
+        "summary": "Delete a specific review",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "type": "string",
+            "description": "ID of the user"
+          },
+          {
+            "in": "path",
+            "name": "reviewId",
+            "required": true,
+            "type": "string",
+            "description": "ID of the review"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Review not found"
+          }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Get user notifications",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "isRead",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Filter by read status"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": ["RELEASE_REMINDER", "TRAILER_RELEASE", "NEW_IN_GENRE"]
+            },
+            "description": "Filter by notification type"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of notifications",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "notifications": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Notification"
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "unreadCount": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/notifications/mark-read": {
+      "post": {
+        "tags": ["Notifications"],
+        "summary": "Mark notifications as read",
+        "security": [{ "Bearer": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "notificationIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "all": {
+                      "type": "boolean",
+                      "description": "Mark all notifications as read"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Notifications marked as read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "modifiedCount": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/notifications/preferences": {
+      "put": {
+        "tags": ["Notifications"],
+        "summary": "Update notification preferences",
+        "security": [{ "Bearer": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "releaseReminders": {
+                    "type": "boolean",
+                    "description": "Receive movie release reminders"
+                  },
+                  "trailerAlerts": {
+                    "type": "boolean",
+                    "description": "Receive trailer release alerts"
+                  },
+                  "genreUpdates": {
+                    "type": "boolean",
+                    "description": "Receive updates for favorite genres"
+                  },
+                  "emailNotifications": {
+                    "type": "boolean",
+                    "description": "Receive email notifications"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preferences updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferences"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/movies/search": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Basic search for movies",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "searchTerm",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Search in title, director, or actors"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResults"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/movies/filter": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Advanced movie filtering",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "genre",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "Filter by genres"
+          },
+          {
+            "in": "query",
+            "name": "yearFrom",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Release year from"
+          },
+          {
+            "in": "query",
+            "name": "yearTo",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Release year to"
+          },
+          {
+            "in": "query",
+            "name": "ratingFrom",
+            "schema": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5
+            },
+            "description": "Minimum rating"
+          },
+          {
+            "in": "query",
+            "name": "language",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "country",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "keywords",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Filtered results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResults"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/movies/top": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Get top rated movies",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Top rated movies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Movie"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/movies/top/genre/{genre}": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Get top movies by genre",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "genre",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Top movies in genre",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Movie"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/movies/top/period/{period}": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Get top movies by time period",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "period",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["week", "month", "year"]
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Top movies for period",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Movie"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/articles": {
+      "post": {
+        "tags": ["News Articles"],
+        "summary": "Create a new article",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "article",
+            "description": "Article details",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["title", "content", "category", "source"],
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "example": "New Marvel Movie Announced"
+                },
+                "content": {
+                  "type": "string",
+                  "example": "Marvel Studios has announced their latest superhero movie..."
+                },
+                "category": {
+                  "type": "string",
+                  "enum": ["MOVIES", "ACTORS", "PROJECTS", "INDUSTRY_UPDATES"],
+                  "example": "MOVIES"
+                },
+                "source": {
+                  "type": "string",
+                  "example": "Hollywood Reporter"
+                },
+                "publicationDate": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2024-03-15T10:00:00Z"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Article created successfully",
+            "schema": {
+              "$ref": "#/components/schemas/NewsArticle"
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/articles/category/{category}": {
+      "get": {
+        "tags": ["News Articles"],
+        "summary": "Get articles by category",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "enum": ["MOVIES", "ACTORS", "PROJECTS", "INDUSTRY_UPDATES"],
+            "example": "MOVIES"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "type": "integer",
+            "description": "Page number",
+            "default": 1,
+            "minimum": 1
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "integer",
+            "description": "Number of items per page",
+            "default": 20,
+            "minimum": 1,
+            "maximum": 100
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "schema": {
+              "$ref": "#/components/schemas/NewsArticlePaginated"
+            }
+          }
+        }
+      }
+    },
+    "/api/articles/recent": {
+      "get": {
+        "tags": ["News Articles"],
+        "summary": "Get recent articles",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "integer",
+            "description": "Number of articles to return",
+            "default": 10,
+            "minimum": 1,
+            "maximum": 50
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/NewsArticle"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/articles/{articleId}": {
+      "put": {
+        "tags": ["News Articles"],
+        "summary": "Update an article",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "name": "articleId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          {
+            "in": "body",
+            "name": "article",
+            "description": "Article update data",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "example": "Updated: New Marvel Movie Announced"
+                },
+                "content": {
+                  "type": "string",
+                  "example": "Updated content about the Marvel movie..."
+                },
+                "category": {
+                  "type": "string",
+                  "enum": ["MOVIES", "ACTORS", "PROJECTS", "INDUSTRY_UPDATES"],
+                  "example": "MOVIES"
+                },
+                "source": {
+                  "type": "string",
+                  "example": "Variety"
+                },
+                "publicationDate": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2024-03-15T10:00:00Z"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Article updated successfully",
+            "schema": {
+              "$ref": "#/components/schemas/NewsArticle"
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Not authorized to update this article"
+          },
+          "404": {
+            "description": "Article not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["News Articles"],
+        "summary": "Delete an article",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "name": "articleId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "example": "507f1f77bcf86cd799439011"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Article deleted successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "example": "Article deleted successfully"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Not authorized to delete this article"
+          },
+          "404": {
+            "description": "Article not found"
+          }
+        }
+      }
+    },
+    "/api/movies/{movieId}/box-office": {
+      "put": {
+        "tags": ["Box Office"],
+        "summary": "Update movie box office data",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "name": "movieId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          {
+            "in": "body",
+            "name": "boxOffice",
+            "description": "Box office data",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "openingWeekend": {
+                  "type": "object",
+                  "properties": {
+                    "domestic": {
+                      "type": "object",
+                      "properties": {
+                        "amount": {
+                          "type": "number",
+                          "example": 100000000
+                        },
+                        "currency": {
+                          "type": "string",
+                          "example": "USD"
+                        }
+                      }
+                    },
+                    "international": {
+                      "type": "object",
+                      "properties": {
+                        "amount": {
+                          "type": "number",
+                          "example": 150000000
+                        },
+                        "currency": {
+                          "type": "string",
+                          "example": "USD"
+                        }
+                      }
+                    }
+                  }
+                },
+                "totalEarnings": {
+                  "type": "object",
+                  "properties": {
+                    "domestic": {
+                      "type": "object",
+                      "properties": {
+                        "amount": {
+                          "type": "number",
+                          "example": 300000000
+                        },
+                        "currency": {
+                          "type": "string",
+                          "example": "USD"
+                        }
+                      }
+                    },
+                    "international": {
+                      "type": "object",
+                      "properties": {
+                        "amount": {
+                          "type": "number",
+                          "example": 500000000
+                        },
+                        "currency": {
+                          "type": "string",
+                          "example": "USD"
+                        }
+                      }
+                    }
+                  }
+                },
+                "budget": {
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "number",
+                      "example": 200000000
+                    },
+                    "currency": {
+                      "type": "string",
+                      "example": "USD"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "get": {
+        "tags": ["Box Office"],
+        "summary": "Get movie box office data",
+        "parameters": [
+          {
+            "name": "movieId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "example": "507f1f77bcf86cd799439011"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Box office data retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoxOffice"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/box-office/top-grossing": {
+      "get": {
+        "tags": ["Box Office"],
+        "summary": "Get top grossing movies",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { 
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["domestic", "international"],
+              "default": "domestic"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of top grossing movies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BoxOffice"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/movies/{movieId}/box-office/weekly": {
+      "post": {
+        "tags": ["Box Office"],
+        "summary": "Add weekly earnings data",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "name": "movieId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          {
+            "in": "body",
+            "name": "weeklyEarnings",
+            "description": "Weekly box office earnings",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "week": {
+                  "type": "integer",
+                  "example": 1,
+                  "minimum": 1,
+                  "maximum": 53
+                },
+                "year": {
+                  "type": "integer",
+                  "example": 2024,
+                  "minimum": 1900
+                },
+                "domestic": {
+                  "type": "number",
+                  "example": 50000000
+                },
+                "international": {
+                  "type": "number",
+                  "example": 75000000
+                },
+                "theaters": {
+                  "type": "integer",
+                  "example": 4500
+                }
+              },
+              "required": ["week", "year", "domestic", "international", "theaters"]
+            }
+          }
+        ]
+      }
+    },
+    "/api/movies/upcoming": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Get upcoming movies with reminder status",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of upcoming movies with reminder status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "_id": { "type": "string" },
+                      "title": { "type": "string" },
+                      "releaseDate": { "type": "string", "format": "date-time" },
+                      "hasReleaseReminder": { "type": "boolean" },
+                      "hasTrailerReminder": { "type": "boolean" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/movies/{movieId}/reminder": {
+      "post": {
+        "tags": ["Notifications"],
+        "summary": "Set a movie reminder",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "name": "movieId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["reminderType"],
+                "properties": {
+                  "reminderType": {
+                    "type": "string",
+                    "enum": ["RELEASE_REMINDER", "TRAILER_RELEASE"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Reminder set successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notification"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/test-email": {
+      "post": {
+        "tags": ["Notifications"],
+        "summary": "Send a test email to verify email configuration",
+        "description": "Sends a test email to the authenticated user's email address to verify the notification system setup",
+        "security": [{ "Bearer": [] }],
+        "responses": {
+          "200": {
+            "description": "Test email sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Test email sent successfully"
+                    },
+                    "result": {
+                      "type": "object",
+                      "properties": {
+                        "messageId": {
+                          "type": "string",
+                          "example": "<123abc@gmail.com>"
+                        },
+                        "sentTo": {
+                          "type": "string",
+                          "example": "user@example.com"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time",
+                          "example": "2024-03-14T12:00:00.000Z"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - User not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Authentication required"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error while sending test email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Failed to send test email"
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "SMTP connection failed"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/images/movies/{movieId}/images": {
+      "post": {
+        "tags": ["Images"],
+        "summary": "Upload movie images (Admin only)",
+        "security": [{ "Bearer": [] }],
+        "consumes": ["multipart/form-data"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "movieId",
+            "required": true,
+            "type": "string",
+            "description": "ID of the movie"
+          },
+          {
+            "in": "formData",
+            "name": "images",
+            "type": "array",
+            "items": {
+              "type": "file"
+            },
+            "required": true,
+            "description": "Images to upload (max 5, formats: jpg, png, jpeg)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Images uploaded successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "example": "Images uploaded successfully"
+                },
+                "images": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "filename": { "type": "string" },
+                      "path": { "type": "string" },
+                      "contentType": { "type": "string" },
+                      "size": { "type": "number" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "No files uploaded or invalid format" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden - Admin only" },
+          "404": { "description": "Movie not found" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/images/actors/{actorId}/images": {
+      "post": {
+        "tags": ["Images"],
+        "summary": "Upload actor images (Admin only)",
+        "security": [{ "Bearer": [] }],
+        "consumes": ["multipart/form-data"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "actorId",
+            "required": true,
+            "type": "string",
+            "description": "ID of the actor"
+          },
+          {
+            "in": "formData",
+            "name": "images",
+            "type": "array",
+            "items": {
+              "type": "file"
+            },
+            "required": true,
+            "description": "Images to upload (max 5, formats: jpg, png, jpeg)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Images uploaded successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "example": "Images uploaded successfully"
+                },
+                "images": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "filename": { "type": "string" },
+                      "path": { "type": "string" },
+                      "contentType": { "type": "string" },
+                      "size": { "type": "number" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "No files uploaded or invalid format" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden - Admin only" },
+          "404": { "description": "Actor not found" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/lists/{listName}/share": {
+      "post": {
+        "tags": ["User Lists"],
+        "summary": "Generate share link for a public list",
+        "security": [{ "Bearer": [] }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listName",
+            "required": true,
+            "type": "string",
+            "description": "Name of the list to share"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Share link generated successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "example": "Share link generated successfully"
+                },
+                "shareLink": {
+                  "type": "string",
+                  "example": "http://example.com/api/lists/shared/abc123def456"
+                },
+                "shareId": {
+                  "type": "string",
+                  "example": "abc123def456"
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "List is not public" },
+          "404": { "description": "List not found" }
+        }
+      }
+    },
+    "/shared/{shareId}": {
+      "get": {
+        "tags": ["User Lists"],
+        "summary": "Get shared list details using share ID",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shareId",
+            "required": true,
+            "type": "string",
+            "description": "Unique share ID of the list"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared list details",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "list": {
+                  "$ref": "#/components/schemas/UserList"
+                },
+                "shareStats": {
+                  "type": "object",
+                  "properties": {
+                    "views": {
+                      "type": "number",
+                      "example": 42
+                    },
+                    "followers": {
+                      "type": "number",
+                      "example": 15
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Shared list not found or is private" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Thread": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "title": { "type": "string" },
+          "content": { "type": "string" },
+          "author": { "$ref": "#/components/schemas/User" },
+          "category": { "type": "string" },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "relatedTo": { "$ref": "#/components/schemas/Movie" },
+          "isLocked": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "lastActivity": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "thread": { "type": "string" },
+          "content": { "type": "string" },
+          "author": { "$ref": "#/components/schemas/User" },
+          "parentComment": { "type": "string" },
+          "likes": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "isEdited": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "MovieInput": {
+        "type": "object",
+        "required": ["title", "genre", "director", "releaseDate"],
+        "properties": {
+          "title": { "type": "string" },
+          "genre": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "director": { "type": "string" },
+          "cast": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "releaseDate": { 
+            "type": "string",
+            "format": "date"
+          },
+          "runtime": { "type": "integer" },
+          "synopsis": { "type": "string" },
+          "poster": { "type": "string" },
+          "trailer": { "type": "string" }
+        }
+      },
+      "DashboardStats": {
+        "type": "object",
+        "properties": {
+          "totalMovies": { "type": "integer" },
+          "activeUsers": { "type": "integer" },
+          "totalReviews": { "type": "integer" },
+          "averageRating": { "type": "number" },
+          "mostPopularGenres": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "genre": { "type": "string" },
+                "count": { "type": "integer" }
+              }
+            }
+          },
+          "topRatedMovies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": { "type": "string" },
+                "rating": { "type": "number" }
+              }
+            }
+          }
+        }
+      },
+      "TrendingData": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string" },
+          "period": { "type": "string" },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "count": { "type": "integer" },
+                "trend": { "type": "number" }
+              }
+            }
+          }
+        }
+      },
+      "AdminLog": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "admin": { 
+            "type": "object",
+            "properties": {
+              "_id": { "type": "string" },
+              "name": { "type": "string" }
+            }
+          },
+          "action": { "type": "string" },
+          "entityType": { "type": "string" },
+          "entityId": { "type": "string" },
+          "details": { "type": "object" },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Profile": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "description": "User ID"
+          },
+          "favoriteGenres": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of favorite movie genres"
+          },
+          "favoriteActors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of favorite actors"
+          },
+          "bio": {
+            "type": "string",
+            "description": "User biography"
+          },
+          "avatar": {
+            "type": "object",
+            "properties": {
+              "filename": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "contentType": {
+                "type": "string"
+              },
+              "size": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      },
+      "CrewInput": {
+        "type": "object",
+        "required": ["name", "role"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Christopher Nolan"
+          },
+          "role": {
+            "type": "string",
+            "example": "Director"
+          },
+          "biography": {
+            "type": "string",
+            "example": "British-American film director known for mind-bending narratives"
+          },
+          "awards": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["Academy Award for Best Director", "Golden Globe Award"]
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"]
+          },
+          "filmography": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["Inception", "The Dark Knight", "Interstellar"]
+          }
+        }
+      },
+      "Crew": {
+        "allOf": [
+          {
+            "$ref": "#/definitions/CrewInput"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "_id": {
+                "type": "string",
+                "example": "507f1f77bcf86cd799439011"
+              }
+            }
+          }
+        ]
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "user": {
+            "type": "object",
+            "properties": {
+              "_id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "avatar": {
+                "type": "string"
+              }
+            }
+          },
+          "movie": {
+            "type": "object",
+            "properties": {
+              "_id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "genre": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "coverPhotos": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "reviewText": {
+            "type": "string"
+          },
+          "likes": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "user": { "type": "string" },
+          "movie": { 
+            "type": "object",
+            "properties": {
+              "_id": { "type": "string" },
+              "title": { "type": "string" },
+              "releaseDate": { "type": "string", "format": "date-time" }
+            }
+          },
+          "type": {
+            "type": "string",
+            "enum": ["RELEASE_REMINDER", "TRAILER_RELEASE", "NEW_IN_GENRE"]
+          },
+          "message": { "type": "string" },
+          "isRead": { "type": "boolean" },
+          "scheduledFor": { "type": "string", "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "NotificationPreferences": {
+        "type": "object",
+        "properties": {
+          "releaseReminders": {
+            "type": "boolean"
+          },
+          "trailerAlerts": {
+            "type": "boolean"
+          },
+          "genreUpdates": {
+            "type": "boolean"
+          },
+          "emailNotifications": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UserList": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "user": {
+            "type": "object",
+            "properties": {
+              "_id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          },
+          "listName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "isPublic": {
+            "type": "boolean"
+          },
+          "followers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "movies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "poster": {
+                  "type": "string"
+                },
+                "addedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SearchResults": {
+        "type": "object",
+        "properties": {
+          "movies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Movie"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "NewsArticleInput": {
+        "type": "object",
+        "required": ["title", "content", "category", "source"],
+        "properties": {
+          "title": { "type": "string" },
+          "content": { "type": "string" },
+          "category": {
+            "type": "string",
+            "enum": ["MOVIES", "ACTORS", "PROJECTS", "INDUSTRY_UPDATES"]
+          },
+          "source": { "type": "string" },
+          "publicationDate": { "type": "string", "format": "date-time" }
+        }
+      },
+      "NewsArticle": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "title": { "type": "string" },
+          "content": { "type": "string" },
+          "category": { "type": "string" },
+          "author": { "$ref": "#/components/schemas/User" },
+          "source": { "type": "string" },
+          "publicationDate": { "type": "string", "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "NewsArticlePaginated": {
+        "type": "object",
+        "properties": {
+          "articles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NewsArticle"
+            }
+          },
+          "total": { "type": "integer" },
+          "page": { "type": "integer" },
+          "totalPages": { "type": "integer" }
+        }
+      },
+      "BoxOfficeInput": {
+        "type": "object",
+        "properties": {
+          "openingWeekend": {
+            "type": "object",
+            "properties": {
+              "domestic": {
+                "type": "object",
+                "properties": {
+                  "amount": { "type": "number" },
+                  "currency": { "type": "string", "default": "USD" }
+                }
+              },
+              "international": {
+                "type": "object",
+                "properties": {
+                  "amount": { "type": "number" },
+                  "currency": { "type": "string", "default": "USD" }
+                }
+              }
+            }
+          },
+          "totalEarnings": {
+            "type": "object",
+            "properties": {
+              "domestic": {
+                "type": "object",
+                "properties": {
+                  "amount": { "type": "number" },
+                  "currency": { "type": "string", "default": "USD" }
+                }
+              },
+              "international": {
+                "type": "object",
+                "properties": {
+                  "amount": { "type": "number" },
+                  "currency": { "type": "string", "default": "USD" }
+                }
+              }
+            }
+          },
+          "budget": {
+            "type": "object",
+            "properties": {
+              "amount": { "type": "number" },
+              "currency": { "type": "string", "default": "USD" }
+            }
+          }
+        }
+      },
+      "WeeklyEarningsInput": {
+        "type": "object",
+        "required": ["week", "year", "domestic", "international", "theaters"],
+        "properties": {
+          "week": { "type": "integer" },
+          "year": { "type": "integer" },
+          "domestic": { "type": "number" },
+          "international": { "type": "number" },
+          "theaters": { "type": "integer" }
+        }
+      },
+      "BoxOffice": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "movie": { 
+            "type": "object",
+            "properties": {
+              "_id": { "type": "string" },
+              "title": { "type": "string" },
+              "releaseDate": { "type": "string", "format": "date-time" }
+            }
+          },
+          "openingWeekend": {
+            "$ref": "#/components/schemas/BoxOfficeInput/properties/openingWeekend"
+          },
+          "totalEarnings": {
+            "$ref": "#/components/schemas/BoxOfficeInput/properties/totalEarnings"
+          },
+          "budget": {
+            "$ref": "#/components/schemas/BoxOfficeInput/properties/budget"
+          },
+          "weeklyEarnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeeklyEarningsInput"
+            }
+          },
+          "lastUpdated": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}
