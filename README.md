@@ -153,7 +153,7 @@ This project is licensed under the ISC License.
 
 ## 👥 Authors
 
-- Your Name - Initial work
+- [Abdullah Asif](https://github.com/AbdullahAsif296)
 
 ## 🙏 Acknowledgments
 
